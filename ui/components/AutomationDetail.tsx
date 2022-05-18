@@ -4,10 +4,10 @@ import styled from "styled-components";
 import { AppContext } from "../contexts/AppContext";
 import { Automation, useSyncAutomation } from "../hooks/automations";
 import { AutomationKind } from "../lib/api/core/types.pb";
+import { AutomationType } from "../lib/types";
 import Alert from "./Alert";
 import EventsTable from "./EventsTable";
 import Flex from "./Flex";
-import Heading from "./Heading";
 import InfoList, { InfoField } from "./InfoList";
 import PageStatus from "./PageStatus";
 import ReconciledObjectsTable from "./ReconciledObjectsTable";
@@ -21,12 +21,8 @@ type Props = {
   info: InfoField[];
 };
 
-const Info = styled.div`
-  margin-bottom: 16px;
-`;
-
 const TabContent = styled(Flex)`
-  margin-top: 52px;
+  margin-top: ${(props) => props.theme.spacing.medium};
   width: 100%;
   height: 100%;
 `;
@@ -49,32 +45,25 @@ function AutomationDetail({ automation, className, info }: Props) {
   };
 
   return (
-    <Flex wide tall column align className={className}>
-      <Flex wide between>
-        <Info>
-          <Heading level={2}>{automation?.namespace}</Heading>
-          <InfoList items={info} />
-        </Info>
-        <PageStatus
-          conditions={automation?.conditions}
-          suspended={automation?.suspended}
+    <Flex wide tall column className={className}>
+      {sync.isError && (
+        <Alert
+          severity="error"
+          message={sync.error.message}
+          title="Sync Error"
         />
-      </Flex>
-      <Flex wide>
-        {sync.isError && (
-          <Alert
-            severity="error"
-            message={sync.error.message}
-            title="Sync Error"
-          />
-        )}
-      </Flex>
+      )}
+      <PageStatus
+        conditions={automation?.conditions}
+        suspended={automation?.suspended}
+      />
+      <InfoList items={info} />
       <SyncButton onClick={handleSyncClicked} loading={sync.isLoading} />
       <TabContent>
         <SubRouterTabs rootPath={`${path}/details`}>
           <RouterTab name="Details" path={`${path}/details`}>
             <ReconciledObjectsTable
-              automationKind={AutomationKind.KustomizationAutomation}
+              automationKind={automation?.type === AutomationType.Kustomization ? AutomationKind.KustomizationAutomation: AutomationKind.HelmReleaseAutomation}
               automationName={automation?.name}
               namespace={automation?.namespace}
               kinds={automation?.inventory}
@@ -93,11 +82,12 @@ function AutomationDetail({ automation, className, info }: Props) {
           </RouterTab>
           <RouterTab name="Graph" path={`${path}/graph`}>
             <ReconciliationGraph
-              automationKind={AutomationKind.KustomizationAutomation}
+              automationKind={automation?.type === AutomationType.Kustomization ? AutomationKind.KustomizationAutomation: AutomationKind.HelmReleaseAutomation}
               automationName={automation?.name}
               kinds={automation?.inventory}
               parentObject={automation}
               clusterName={automation?.clusterName}
+              source={automation?.type === AutomationType.Kustomization ? automation?.sourceRef: automation?.helmChart.sourceRef}
             />
           </RouterTab>
         </SubRouterTabs>
